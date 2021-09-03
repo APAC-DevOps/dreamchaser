@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-jenkins = {editable = true, path = "."}
+dreamchaser = {path = "."}
 
 [dev-packages]
 

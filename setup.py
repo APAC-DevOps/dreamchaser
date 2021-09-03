@@ -7,7 +7,7 @@ except IOError:
     long_description = ""
 
 setup(
-    name="jenkins",
+    name="dreamchaser",
     version="0.1.0",
     description="A Jianhua WU's package provides an easy way for setting up Jenkins servers",
     long_description=long_description,
@@ -16,7 +16,8 @@ setup(
     author="Jianhua Wu",
     author_email="jianhua.wu@dreamchaser.one",
     url="https://dreamchaser.one",
-
+    
+    package_dir={"": "dreamchaser"},
     packages=find_packages(where="jenkins"),
 
     install_requires=[
