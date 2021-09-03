@@ -28,26 +28,31 @@ Set up Pipenv:
 ---------------------------------
 
 Install the desired Python version via pyenv::
+
     pyenv install 3.9.7
 
 Set the local application-specific Python version::
+
     pyenv local 3.9.7
 
 Set up and activate pipenv::
+
     pipenv shell
 
 Once the pipenv is activated, you can install the required dependencies::
+
     pipenv install -e .
 
-At this point you can now synthesize the CloudFormation template for this code.
-$ cdk synth
+At this point you can now synthesize the CloudFormation template for this code::
+    
+    cdk synth
 
 
 To add additional dependencies, for example other CDK libraries, just add
 them to your `setup.py` file and rerun the `pip install -e .`
 command.
 
-## Useful commands
+Useful commands
 
  * `cdk ls`          list all stacks in the app
  * `cdk synth`       emits the synthesized CloudFormation template
