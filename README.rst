@@ -41,7 +41,7 @@ Set up and activate pipenv::
 
 Once the pipenv is activated, you can install the required dependencies::
 
-    pipenv install -e .
+    pipenv install .
 
 Enjoy!
 
