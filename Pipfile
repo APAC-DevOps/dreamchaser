@@ -4,6 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+constructs = "==10.0.5"
 dreamchaser = {path = "."}
 
 [dev-packages]
