@@ -24,11 +24,13 @@ class VPCStack(Stack):
         pub_subnet_oct3 = 2 ** exp          # the IP address range of the public subnets for workload is from x.x.2 ** exp.0
         pri_subnet_oct3 = 2 ** exp * 4      # the IP address range of the private subnets for workload is from x.x.2 ** exp * 4.0
         iso_subnet_oct3 = 192               # the IP address range of isolated subnets is from x.x.192.0 to x.x.255.255
+        tgw_subnet_oct3 = 240
         ordinal_number = 0
         route_tables = []
+        tgw_subnets = []
 
 
-        self.vpc = ec2.Vpc(self, 'DREAMCHASER',
+        self.vpc = ec2.Vpc(self, 'VPC',
             cidr=vpc_cidr,
             max_azs=total_az,
             enable_dns_hostnames=True,
@@ -51,6 +53,7 @@ class VPCStack(Stack):
                 vpc_id=self.vpc.vpc_id,
                 availability_zone=az
             )
+            public_subnet.add_default_internet_route(self.vpc.internet_gateway_id, self.vpc.internet_connectivity_established)
             route_tables.append(public_subnet.route_table.route_table_id)
 
             private_subnet = ec2.PrivateSubnet(self, f"Private Subnet Zone {az}",
@@ -65,6 +68,13 @@ class VPCStack(Stack):
                 vpc_id=self.vpc.vpc_id,
                 availability_zone=az
             )
+
+            tgw_subnet = ec2.Subnet(self, f"TGW Subnet Zone {az}",
+                cidr_block='.'.join((oct_1, oct_2, str(tgw_subnet_oct3 + ordinal_number), "0")) + "/24",
+                vpc_id=self.vpc.vpc_id,
+                availability_zone=az
+            )
+            tgw_subnets.append(tgw_subnet.subnet_id)
             ordinal_number = ordinal_number + 1
 
 
@@ -95,6 +105,37 @@ class VPCStack(Stack):
                         }
                     ]
             }
+        )
+
+        self.tgw = ec2.CfnTransitGateway(self, "TGW",
+            amazon_side_asn=65000,
+            auto_accept_shared_attachments='enable',
+            default_route_table_association='disable',
+            default_route_table_propagation='disable',
+            dns_support='enable',
+            vpn_ecmp_support='enable'
+        )
+
+        self.tgw_attach = ec2.CfnTransitGatewayAttachment(self, "TGWAttach",
+            subnet_ids=tgw_subnets,
+            transit_gateway_id=self.tgw.ref,
+            vpc_id=self.vpc.vpc_id
+        )
+
+        self.tgw_rt = ec2.CfnTransitGatewayRouteTable(self, "TGWRt",
+            transit_gateway_id=self.tgw.ref
+        )
+
+        self.tgw_rt_asso = ec2.CfnTransitGatewayRouteTableAssociation(self, "TGWRtAssociation",
+            transit_gateway_attachment_id=self.tgw_attach.ref,
+            transit_gateway_route_table_id=self.tgw_rt.ref
+        )
+
+        self.tgw_route = ec2.CfnTransitGatewayRoute(self, "TGWRoute",
+            transit_gateway_route_table_id=self.tgw_rt.ref,
+            destination_cidr_block="192.168.0.0/16",
+            transit_gateway_attachment_id=self.tgw_attach.ref,
+
         )
 
         # Tags.of(self.vpc).add("DREAMCHASER", "DREAMCHASERVPC")
