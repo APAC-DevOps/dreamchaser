@@ -41,16 +41,16 @@ Set up Pipenv:
 --------------
 
 Install the desired Python version via pyenv::
-    pyenv install 3.9.7
+    # pyenv install 3.9.7
 
 Set the local application-specific Python version::
-    pyenv local 3.9.7
+    # pyenv local 3.9.7
 
 Set up and activate pipenv::
-    pipenv shell
+    # pipenv shell
 
 Once the pipenv is activated, you can install the required dependencies::
-    pipenv install .
+    # pipenv install .
 
 
 ---------------------------
