@@ -3,12 +3,13 @@ from constructs import Construct
 from aws_cdk import (
     aws_ec2 as ec2,
     aws_iam as iam,
+    aws_ram as ram,
     Stack, Tags
 )
 
 class VPCStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, ou_id:str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
         vpc_cidr = self.node.try_get_context("DREAMCHASER_VPC_CIDR")
@@ -136,6 +137,12 @@ class VPCStack(Stack):
             destination_cidr_block="192.168.0.0/16",
             transit_gateway_attachment_id=self.tgw_attach.ref,
 
+        )
+
+        ram.CfnResourceShare(self, 'RAMTgw',
+            name='dc_one_ou_id',
+            principals=[ou_id],
+            resource_arns=[f"arn:aws:ec2:{self.region}:{self.account}:transit-gateway/{self.tgw.ref}"]
         )
 
         # Tags.of(self.vpc).add("DREAMCHASER", "DREAMCHASERVPC")

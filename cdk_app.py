@@ -4,11 +4,15 @@ from constructs import Construct
 from aws_cdk import App, Stack, Environment
 from aws_cdk import aws_s3 as s3
 from vpc.vpc_core import VPCStack
+from dreamchaser.aws_init import AWSSsm
 
 #cdk bootstrap yourAWSAccountId/desiredAWSRegion --profile dreamchaser-one
 #cdk deploy -c DREAMCHASER_CDK_ACCOUNT=yourAWSAccountId -c DREAMCHASER_CDK_REGION=desiredAWSRegion DREAMCHASER-VPC-STACK-MAIN
 
 app_vpc = App()
+
+ssm_client = AWSSsm('ap-southeast-2')
+ou_id = ssm_client.get_para(name='DC_ONE_OU_ID')
 
 if app_vpc.node.try_get_context("DREAMCHASER_CDK_ACCOUNT"):
         dreamchaser_cdk_account = app_vpc.node.try_get_context("DREAMCHASER_CDK_ACCOUNT")
@@ -32,7 +36,7 @@ else:
 
 # MyVPC(app_vpc, "alpha")
 
-vpc_stack = VPCStack(app_vpc, "DREAMCHASER-VPC-STACK-MAIN",
+vpc_stack = VPCStack(app_vpc, "DREAMCHASER-VPC-STACK-MAIN", ou_id = ou_id,
                      env=Environment(
                         account=dreamchaser_cdk_account,
                         region=dreamchaser_cdk_region
