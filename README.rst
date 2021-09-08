@@ -1,12 +1,19 @@
-=======
-Dreamchaser
-=======
+"""""""""""
+Provision AWS Resources with CDK on Any AWS Account at any AWS General Region
+"""""""""""
 
-A Dreamchaser's project, produced by Jianhua Wu
+...........
+
+...........
+
+.. contents:: Overview
+   :depth 3
+
+A **Dreamchaser**'s project, produced by Jianhua Wu
 
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
-The JENKINS package works on Python versions:
+The project works on Python versions:
 
 * 3.6.x and greater
 * 3.7.x and greater
