@@ -7,7 +7,6 @@ Provision AWS Resources with CDK on Any AWS Account at any AWS General Region
 ...........
 
 .. contents:: Overview
-   :depth 3
 
 A **Dreamchaser**'s project, produced by Jianhua Wu
 
@@ -35,7 +34,6 @@ Configure AWS
 -------------
 
 Quick AWS Configuration::
-
     aws configure
 
 --------------
@@ -43,19 +41,15 @@ Set up Pipenv:
 --------------
 
 Install the desired Python version via pyenv::
-
     pyenv install 3.9.7
 
 Set the local application-specific Python version::
-
     pyenv local 3.9.7
 
 Set up and activate pipenv::
-
     pipenv shell
 
 Once the pipenv is activated, you can install the required dependencies::
-
     pipenv install .
 
 
@@ -63,14 +57,12 @@ Once the pipenv is activated, you can install the required dependencies::
 Initialize AWS Organization
 ---------------------------
 From within your python pipenv::
-
     python3 aws_account_setup.py
 
 -------------------
 Enjoy AWS CDK!
 -------------------
-
-    cdk bootstrap
-    cdk list
-    cdk deploy
+    |cdk bootstrap
+    |cdk list
+    |cdk deploy
 
