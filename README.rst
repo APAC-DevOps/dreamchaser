@@ -23,9 +23,17 @@ Pre-requisite
 * Azure Creds
 * general Azure knowledge
 
----------------------------------
+-------------
+Configure AWS
+-------------
+
+Quick AWS Configuration::
+
+    aws configure
+
+--------------
 Set up Pipenv:
----------------------------------
+--------------
 
 Install the desired Python version via pyenv::
 
@@ -43,5 +51,19 @@ Once the pipenv is activated, you can install the required dependencies::
 
     pipenv install .
 
-Enjoy!
+
+---------------------------
+Initialize AWS Organization
+---------------------------
+From within your python pipenv::
+
+    python3 aws_account_setup.py
+
+-------------------
+Enjoy AWS CDK!
+-------------------
+
+    cdk bootstrap
+    cdk list
+    cdk deploy
 
