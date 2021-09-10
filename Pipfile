@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 constructs = "==10.0.5"
 dreamchaser = {path = "."}
+jenkins = {path = "."}
 
 [dev-packages]
 
