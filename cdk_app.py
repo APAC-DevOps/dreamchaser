@@ -6,41 +6,40 @@ from aws_cdk import aws_s3 as s3
 from vpc.vpc_core import VPCStack
 from dreamchaser.aws_init import AWSSsm
 
-#cdk bootstrap yourAWSAccountId/desiredAWSRegion --profile dreamchaser-one
-#cdk deploy -c DREAMCHASER_CDK_ACCOUNT=yourAWSAccountId -c DREAMCHASER_CDK_REGION=desiredAWSRegion DREAMCHASER-VPC-STACK-MAIN
+#cdk bootstrap yourAWSAccountId/desiredAWSRegion --profile yourAwsProfile
+#cdk deploy -c DC_AWS_ACCOUNT=yourAWSAccountId -c DC_AWS_REGION=desiredAWSRegion DREAMCHASER-VPC-STACK-MAIN
 
 app_vpc = App()
-
 ssm_client = AWSSsm('ap-southeast-2')
-ou_id = ssm_client.get_para(name='DC_ONE_OU_ID')
+aws_account = app_vpc.node.try_get_context("DC_AWS_ACCOUNT") or os.getenv("CDK_DEFAULT_ACCOUNT")
+aws_region = app_vpc.node.try_get_context("DC_AWS_REGION") or os.getenv("CDK_DEFAULT_REGION")
 
-if app_vpc.node.try_get_context("DREAMCHASER_CDK_ACCOUNT"):
-        dreamchaser_cdk_account = app_vpc.node.try_get_context("DREAMCHASER_CDK_ACCOUNT")
-else:
-        dreamchaser_cdk_account = os.getenv("CDK_DEFAULT_ACCOUNT")
-
-if app_vpc.node.try_get_context("DREAMCHASER_CDK_REGION"):
-        dreamchaser_cdk_region = app_vpc.node.try_get_context("DREAMCHASER_CDK_REGION")
-else:
-        dreamchaser_cdk_region = os.getenv("CDK_DEFAULT_REGION")
-
-# class MyVPC(Construct):
-#     def __init__(self, scope: Construct, id: str, *, prod=False) -> None:
-#         super().__init__(scope, id)
-#     VPCStack(app_vpc, "DREAMCHASER-VPC-STACK-MAIN",
-#                      env=Environment(
-#                         account=dreamchaser_cdk_account,
-#                         region=dreamchaser_cdk_region
-#                      )
-#              )
-
-# MyVPC(app_vpc, "alpha")
-
-vpc_stack = VPCStack(app_vpc, "DREAMCHASER-VPC-STACK-MAIN", ou_id = ou_id,
+vpc_stack = VPCStack(app_vpc, "DREAMCHASER-VPC-STACK-MAIN",
                      env=Environment(
-                        account=dreamchaser_cdk_account,
-                        region=dreamchaser_cdk_region
+                        account=aws_account,
+                        region=aws_region
                      )
             )
+# assume you don't have AWS Organization set up, and there is one AWS account only,
+if app_vpc.node.try_get_context("DC_EASY_VPC"):
+        vpc_stack.dc_easy_vpc()
+else:
+        # the purpose of the lines of code below is to show how DreamChaser construct can be used flexibibly
+        # you can make changes per your project requirements
+        ou_id = app_vpc.node.try_get_context("DC_OU_ID") or ssm_client.get_para(name='DC_ONE_OU_ID')
+        vpc_stack.vpc(vpc_cidr=app_vpc.node.try_get_context('DC_VPC_CIDR'))
+        vpc_stack.apply_endpoint(vpc_id=vpc_stack.vpc.vpc_id, rt_ids=vpc_stack.route_tables)
+        vpc_stack.create_tgw()
+        vpc_stack.share_tgw(ou_id=ou_id, tgw_id=app_vpc.node.try_get_context("DC_TGW_ID") or vpc_stack.tgw.ref)
+        vpc_stack.create_tgw_attach(
+                vpc_id=app_vpc.node.try_get_context("DC_VPC_ID") or vpc_stack.vpc.vpc_id,
+                tgw_id=app_vpc.node.try_get_context("DC_TGW_ID") or vpc_stack.tgw.ref,
+                tgw_subnets=app_vpc.node.try_get_context("DC_TGW_SUBNETS") or vpc_stack.tgw_subnets,
+        )
+        vpc_stack.create_tgw_route(
+                tgw_id=app_vpc.node.try_get_context("DC_TGW_ID") or vpc_stack.tgw.ref,
+                asso_tgw_attach_id=app_vpc.node.try_get_context("DC_ASSO_TGW_ATTACH_ID") or vpc_stack.tgw_attach.ref,
+                dest_tgw_attach_id=app_vpc.node.try_get_context("DC_DEST_TGW_ATTACH_ID") or vpc_stack.tgw_attach.ref,
+                dest_cidr='192.168.0.0/24')  # please specify your own destination CIDR here.
 
 app_vpc.synth()

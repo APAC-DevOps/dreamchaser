@@ -6,7 +6,7 @@
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
     "@aws-cdk/aws-lambda:recognizeVersionProps": true,
     "@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021": true,
-    "DREAMCHASER_VPC_CIDR": "10.10.0.0/16",
-    "DREAMCHASER_VPC_HA": false
+    "DC_VPC_CIDR": "10.10.0.0/16",
+    "DC_VPC_HA": false
   }
 }
