@@ -12,7 +12,7 @@ class VPCStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-    def vpc(self, vpc_cidr):    
+    def vpc(self, vpc_cidr: str, vpc_ha: bool):    
         vpc_cidr = vpc_cidr
         oct_1 = vpc_cidr.split('.')[0]
         oct_2 = vpc_cidr.split('.')[1]
@@ -23,12 +23,13 @@ class VPCStack(Stack):
             sum = sum // 2
             exp = exp + 1
 
-        pub_subnet_oct3 = 2 ** exp          # the IP address range of the public subnets for workload is from x.x.2 ** exp.0
+        pub_subnet_oct3 = 2 ** exp * 2         # the IP address range of the public subnets for workload is from x.x.2 ** exp.0
         pri_subnet_oct3 = 2 ** exp * 4      # the IP address range of the private subnets for workload is from x.x.2 ** exp * 4.0
         iso_subnet_oct3 = 160               # the IP address range of isolated subnets is from x.x.192.0 to x.x.255.255
         db_subnet_oct3 = 192
         tgw_subnet_oct3 = 240
-        ordinal_number = 0
+        subnet_index = 0
+        nat_gateway_ids = []
         self.route_tables = []
         self.tgw_subnets = []
         self.db_subnets = []
@@ -45,47 +46,65 @@ class VPCStack(Stack):
                     cidr_mask=24
                 )
             ],
-            nat_gateways= total_az if self.node.try_get_context("DREAMCHASER_VPC_HA") else 1
-        )
+            nat_gateways=None
+        )        
 
         # create Public, Private, Database, Isolated and tgw subnets in each availability zones respectivly
         for az in self.vpc.availability_zones:
             public_subnet = ec2.PublicSubnet(self, f"Public Subnet Zone {az}",
-                cidr_block='.'.join((oct_1, oct_2, str(pub_subnet_oct3 + ordinal_number), "0")) + "/24",
+                cidr_block='.'.join((oct_1, oct_2, str(pub_subnet_oct3 + subnet_index), "0")) + "/24",
                 vpc_id=self.vpc.vpc_id,
                 availability_zone=az
             )
             public_subnet.add_default_internet_route(self.vpc.internet_gateway_id, self.vpc.internet_connectivity_established)
             self.route_tables.append(public_subnet.route_table.route_table_id)
 
+            if vpc_ha:
+                eip = ec2.CfnEIP(self, f"NatGateway EIP {az}")
+                nat_gateway = ec2.CfnNatGateway(self, f"NatGateway {az}",
+                    subnet_id=self.vpc.public_subnets[subnet_index].subnet_id,
+                    allocation_id=eip.attr_allocation_id,
+                    connectivity_type="public"
+                )
+                nat_gateway_ids.append(nat_gateway.ref)
+            elif (len(nat_gateway_ids) < 1):
+                eip = ec2.CfnEIP(self, f"NatGateway EIP {az}")
+                nat_gateway = ec2.CfnNatGateway(self, f"NatGateway {az}",
+                    subnet_id=self.vpc.public_subnets[subnet_index].subnet_id,
+                    allocation_id=eip.attr_allocation_id,
+                    connectivity_type="public"
+                )
+                nat_gateway_ids.append(nat_gateway.ref)
+
+
             private_subnet = ec2.PrivateSubnet(self, f"Private Subnet Zone {az}",
-                cidr_block='.'.join((oct_1, oct_2, str(pri_subnet_oct3 + ordinal_number), "0")) + "/24",
+                cidr_block='.'.join((oct_1, oct_2, str(pri_subnet_oct3 + subnet_index), "0")) + "/24",
                 vpc_id=self.vpc.vpc_id,
                 availability_zone=az
             )
+            private_subnet.add_default_nat_route(nat_gateway_ids[subnet_index] if vpc_ha else nat_gateway_ids[0])
             self.route_tables.append(private_subnet.route_table.route_table_id)
 
             db_subnet = ec2.Subnet(self, f"Database Subnet Zone {az}",
-                cidr_block='.'.join((oct_1, oct_2, str(db_subnet_oct3 + ordinal_number), "0")) + "/24",
+                cidr_block='.'.join((oct_1, oct_2, str(db_subnet_oct3 + subnet_index), "0")) + "/24",
                 vpc_id=self.vpc.vpc_id,
                 availability_zone=az
             )
+            self.db_subnets.append(db_subnet.subnet_id)
 
             isolated_subnet = ec2.Subnet(self, f"Isolated Subnet Zone {az}",
-                cidr_block='.'.join((oct_1, oct_2, str(iso_subnet_oct3 + ordinal_number), "0")) + "/24",
+                cidr_block='.'.join((oct_1, oct_2, str(iso_subnet_oct3 + subnet_index), "0")) + "/24",
                 vpc_id=self.vpc.vpc_id,
                 availability_zone=az
             )
 
             tgw_subnet = ec2.Subnet(self, f"TGW Subnet Zone {az}",
-                cidr_block='.'.join((oct_1, oct_2, str(tgw_subnet_oct3 + ordinal_number), "0")) + "/24",
+                cidr_block='.'.join((oct_1, oct_2, str(tgw_subnet_oct3 + subnet_index), "0")) + "/24",
                 vpc_id=self.vpc.vpc_id,
                 availability_zone=az
             )
             self.tgw_subnets.append(tgw_subnet.subnet_id)
-            ordinal_number = ordinal_number + 1
-
-        #self.apply_endpoint(vpc_id=self.vpc.vpc_id, rt_ids=route_tables)
+            subnet_index = subnet_index + 1
 
     def apply_endpoint(self, vpc_id: str, rt_ids: list) -> None:
         ec2.CfnVPCEndpoint(self, "VPCEnpoint",
@@ -160,8 +179,8 @@ class VPCStack(Stack):
         )
 
     # create vpc in dreamchaser way easily
-    def dc_easy_vpc(self):
-        self.vpc(vpc_cidr=self.node.try_get_context('DC_VPC_CIDR'))
+    def easy_vpc(self):
+        self.vpc(vpc_cidr=self.node.try_get_context('DC_VPC_CIDR'), vpc_ha=self.node.try_get_context('DC_VPC_HA'))
         self.apply_endpoint(vpc_id=self.vpc.vpc_id, rt_ids=self.route_tables)
         self.create_tgw()
         self.create_tgw_attach(vpc_id=self.vpc.vpc_id, tgw_id=self.tgw.ref, tgw_subnets=self.tgw_subnets)

@@ -7,6 +7,7 @@
     "@aws-cdk/aws-lambda:recognizeVersionProps": true,
     "@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021": true,
     "DC_VPC_CIDR": "10.10.0.0/16",
-    "DC_VPC_HA": false
+    "DC_VPC_HA": false,
+    "DC_DEST_CIDR": "10.64.0.0/16"
   }
 }
