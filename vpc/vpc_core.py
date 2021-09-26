@@ -1,5 +1,4 @@
 import sys
-from typing import List
 import uuid
 import time
 import hashlib
@@ -92,7 +91,7 @@ class VPCStack(Stack):
                 )
                 self.nat_gateway_ids.append(nat_gateway.ref)
 
-    def add_public_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> List:
+    def add_public_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> list:
         if not self.enable_internet:
             raise ValueError('There has to be an Internet Gateway for adding public subnets')
 
@@ -111,7 +110,7 @@ class VPCStack(Stack):
 
         return isubnets
 
-    def add_private_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> List:
+    def add_private_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> list:
         isubnets = []
         for index in range(len(self.availability_zones)):
             private_subnet = ec2.PrivateSubnet(self, f"{scope_id} {self.availability_zones[index]}",
@@ -129,7 +128,7 @@ class VPCStack(Stack):
 
         return isubnets
 
-    def add_isolated_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> List:
+    def add_isolated_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> list:
         isubnets = []
         for index in range(len(self.availability_zones)):
             subnet = ec2.Subnet(self, f"{scope_id} {self.availability_zones[index]}",
@@ -197,7 +196,7 @@ class VPCStack(Stack):
             resource_arns=[f"arn:aws:ec2:{self.region}:{self.account}:transit-gateway/{self.tgw.ref}"]
         )
 
-    def create_tgw_attach(self, vpc_id: str, tgw_id: str, subnet_oct3: int, mask: int, scope_id: str=None) -> List:
+    def create_tgw_attach(self, vpc_id: str, tgw_id: str, subnet_oct3: int, mask: int, scope_id: str=None) -> list:
         """
         Create Transit Gateway Attachment
 
