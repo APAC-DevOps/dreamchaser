@@ -1,4 +1,5 @@
 import sys
+from typing import List
 import uuid
 import time
 import hashlib
@@ -15,7 +16,7 @@ class VPCStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-    def add_vpc(self, vpc_cidr: str, enable_internet: bool, enable_nat: bool, vpc_ha: bool=False, vpc_endpoint: bool=False):
+    def add_vpc(self, vpc_cidr: str, enable_internet: bool, enable_nat: bool, vpc_ha: bool=False, vpc_endpoint: bool=False) -> None:
         """
         Add an AWS VPC
 
@@ -91,7 +92,7 @@ class VPCStack(Stack):
                 )
                 self.nat_gateway_ids.append(nat_gateway.ref)
 
-    def add_public_subnets(self, subnet_oct3: int, mask: int, scope_id: str):
+    def add_public_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> List:
         if not self.enable_internet:
             raise ValueError('There has to be an Internet Gateway for adding public subnets')
 
@@ -110,7 +111,7 @@ class VPCStack(Stack):
 
         return isubnets
 
-    def add_private_subnets(self, subnet_oct3: int, mask: int, scope_id: str):
+    def add_private_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> List:
         isubnets = []
         for index in range(len(self.availability_zones)):
             private_subnet = ec2.PrivateSubnet(self, f"{scope_id} {self.availability_zones[index]}",
@@ -128,7 +129,7 @@ class VPCStack(Stack):
 
         return isubnets
 
-    def add_isolated_subnets(self, subnet_oct3: int, mask: int, scope_id: str):
+    def add_isolated_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> List:
         isubnets = []
         for index in range(len(self.availability_zones)):
             subnet = ec2.Subnet(self, f"{scope_id} {self.availability_zones[index]}",
@@ -170,11 +171,11 @@ class VPCStack(Stack):
                 }
         )
 
-    def add_nat_route(self, isubnets: list):
+    def add_nat_route(self, isubnets: list) -> None:
         for i in range(len(self.availability_zones)):
             isubnets[i].add_default_nat_route(self.nat_gateway_ids[i] if self.vpc_ha else self.nat_gateway_ids[0])
 
-    def create_tgw(self, bgp_asn: int=65000, scope_id: str=None):
+    def create_tgw(self, bgp_asn: int=65000, scope_id: str=None) -> None:
         # unique bgp_asn number is needed if you have multiple transit gateway in your organization.
         # and the value should not conflict with the other ASN value (if there is any) that you use
         # in your organization
@@ -196,7 +197,7 @@ class VPCStack(Stack):
             resource_arns=[f"arn:aws:ec2:{self.region}:{self.account}:transit-gateway/{self.tgw.ref}"]
         )
 
-    def create_tgw_attach(self, vpc_id: str, tgw_id: str, subnet_oct3: int, mask: int, scope_id: str=None):
+    def create_tgw_attach(self, vpc_id: str, tgw_id: str, subnet_oct3: int, mask: int, scope_id: str=None) -> List:
         """
         Create Transit Gateway Attachment
 
@@ -225,7 +226,7 @@ class VPCStack(Stack):
         )
         return res_isubnets
 
-    def tgw_route_table(self, tgw_id: str, asso_tgw_attach_id: str, dest_tgw_attach_id: str, dest_cidr: str):
+    def tgw_route_table(self, tgw_id: str, asso_tgw_attach_id: str, dest_tgw_attach_id: str, dest_cidr: str) -> None:
         """
         Implement Flat Transit Gateway route domains
 
@@ -248,7 +249,7 @@ class VPCStack(Stack):
 
         )
 
-    def add_tgw_route(self, route_tables: list, tgw_id: str, tgw_attach: str, dest_cidr: str, scope_id: str=None):
+    def add_tgw_route(self, route_tables: list, tgw_id: str, tgw_attach: str, dest_cidr: str, scope_id: str=None) -> None:
         for i in range(len(route_tables)):
             res_tgw_route=ec2.CfnRoute(self, f"{scope_id}{i}",
                             route_table_id=route_tables[i],
@@ -258,7 +259,7 @@ class VPCStack(Stack):
             res_tgw_route.add_depends_on(tgw_attach)
 
     # create vpc in dreamchaser way easily
-    def easy_vpc(self):
+    def easy_vpc(self) -> None:
         self.add_vpc(vpc_cidr=self.node.try_get_context('DC_VPC_CIDR'), enable_internet=True, enable_nat=True, vpc_ha=self.node.try_get_context('DC_VPC_HA'), vpc_endpoint=True)
         res_pub_isubnets = self.add_public_subnets(subnet_oct3=16, mask=24, scope_id='DCPublicSubnets')
         res_pri_isubnets = self.add_private_subnets(subnet_oct3=128, mask=24, scope_id='DCPrivateSubnets')
