@@ -1,5 +1,6 @@
 # AWS Cloud Automation
-Provision AWS Resources with CDK V2 on Any AWS Account at any AWS General Region
+Provision AWS Resources with CDK V2 on Any AWS Account at any AWS General Region.
+
 A **Dreamchaser**'s project, produced by **Jianhua Wu**
 
 As of now (September 8th, 2021), the CDK V2 is still in preview stage, hence, breaking change might be introduced in future release. You can track the release status of CDK V2 at [here]https://github.com/aws/aws-cdk/projects/10
@@ -56,6 +57,6 @@ python3 aws_account_setup.py
 ```
     cdk bootstrap
     cdk list
-    cdk deploy
+    cdk deploy -c EASY_VPC=True DREAMCHASER-VPC-STACK-MAIN
 ```
 

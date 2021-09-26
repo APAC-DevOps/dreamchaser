@@ -15,7 +15,34 @@ class VPCStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-    def add_vpc(self, vpc_cidr: str, enable_internet: bool, enable_nat: bool, vpc_ha: bool, vpc_endpoint: bool=False):
+    def add_vpc(self, vpc_cidr: str, enable_internet: bool, enable_nat: bool, vpc_ha: bool=False, vpc_endpoint: bool=False):
+        """
+        Add an AWS VPC
+
+        Scenarios:
+            1. VPC with both inbound and outbound internet connectivity. E.g. single AWS VPC environment; or for
+            provisioning the VPC as the outbound VPC for the other VPCs in your organization.
+                - set both the arguments "enable_internet" and "enable_nat" to True   
+            2. VPC with direct inbound internet connectivity. But its outbound internet connectivity goes via
+            outbound VPC. E.g. VPCs on an AWS member account which connects to a transit gateway that is attached
+            to a VPC dedicated for outbound internet connectivity.
+                - set the argument "enable_internet" to True; and set the argument "enable_nat" to False
+            3. VPC WITHOUT direct inbound internet connectivity; however, it has outbound internet connectivity 
+            via a VPC which has direct outbound internet connectivity. Without adding any routes via any gateway,
+            resource in this type of VPC is self-isolated completely.
+                - set both the arguments "enable_internet" and "enable_nat" to False
+            4. To implement network level high availability for tolerating AWS zone level service down on the VPC
+            with direct outbound internet connectivity.
+                - set both the arguments "enable_nat" and "vpc_ha" to True. By default, only a single AWS NatGatewy is
+                implemented in the first availability zone(zone A) of the designated AWS region.
+
+        Args:
+            vpc_cidr (str): the Classless Inter-Domain Routing for AWS VPC.
+            enable_internet (bool): set to True to enable inbound internet connectivity.
+            enable_nat (bool): set to True to enable outbound internet connectivity via VPC NatGateway.
+            vpc_ha (bool): set to True to provision multiple VPC NatGateway for high availability.
+            vpc_endpoint: set to True to connect to supported AWS services via AWS PrivateLink.
+        """
         self.vpc_cidr = vpc_cidr
         self.oct_1 = self.vpc_cidr.split('.')[0]
         self.oct_2 = self.vpc_cidr.split('.')[1]
@@ -173,14 +200,15 @@ class VPCStack(Stack):
         """
         Create Transit Gateway Attachment
 
-        Per AWS best practice, each TGW should have its own set of VPC subnets in a VPC. Hence, The 
-        creation of VPC subnets is definied along with the definition of adding TGW attachment.
+        Notes:
+            Per AWS best practice, each TGW should have its own set of VPC subnets in a VPC. Hence, The 
+            creation of VPC subnets is definied along with the definition of adding TGW attachment.
 
-        TGW ID has to be passed in as a function argument(tgw_id) as there is chance that tgw to have
-        a tgw attachment attached to is shared via AWS Resource Access Manager.
+            Multiple TGW attachments, each with a unique transit gateway id, can be attached to same VPC.
 
-        VPC ID should be passed in as a function argument(vpc_id) since there is circumstance that
-        TGW attachment is added into an existing VPC.
+        Args:
+            vpc_id (str): the resource id of VPC to attach to the transit gateway designated by tgw_id.
+            tgw_id (str): the resource id of transit gateway this transit gateway attachment attachs to.
         """
 
         # since there is circumstance that TGW attachment is added into an existing VPC, it merits to
