@@ -231,8 +231,8 @@ class VPCStack(Stack):
 
     # create vpc in dreamchaser way easily
     def easy_vpc(self):
-        self.add_vpc(vpc_cidr=self.node.try_get_context('DC_VPC_CIDR'), enable_internet=False, enable_nat=True, vpc_ha=self.node.try_get_context('DC_VPC_HA'), vpc_endpoint=True)
-        #res_pub_isubnets = self.add_public_subnets(subnet_oct3=16, mask=24, scope_id='DCPublicSubnets')
+        self.add_vpc(vpc_cidr=self.node.try_get_context('DC_VPC_CIDR'), enable_internet=True, enable_nat=True, vpc_ha=self.node.try_get_context('DC_VPC_HA'), vpc_endpoint=True)
+        res_pub_isubnets = self.add_public_subnets(subnet_oct3=16, mask=24, scope_id='DCPublicSubnets')
         res_pri_isubnets = self.add_private_subnets(subnet_oct3=128, mask=24, scope_id='DCPrivateSubnets')
         res_iso_isubnets = self.add_isolated_subnets(subnet_oct3=192, mask=24, scope_id='DCIsolatedSubnets')
         self.create_tgw(scope_id="TGW")
