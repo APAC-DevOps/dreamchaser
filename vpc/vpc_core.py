@@ -7,10 +7,12 @@ from aws_cdk import (
     aws_ec2 as ec2,
     aws_iam as iam,
     aws_ram as ram,
-    Stack, Tags, CfnJson, IResolvable
+    Stack, NestedStack, Tags, CfnJson, IResolvable
 )
+class MainStack(Stack):
+    pass
 
-class VPCStack(Stack):
+class VPCStack(NestedStack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -91,14 +93,14 @@ class VPCStack(Stack):
                 )
                 self.nat_gateway_ids.append(nat_gateway.ref)
 
-    def add_public_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> list:
+    def add_public_subnets(self, scope_id: str, subnet_oct3: int, mask: int=24) -> list:
         if not self.enable_internet:
             raise ValueError('There has to be an Internet Gateway for adding public subnets')
 
         isubnets = []
         for index in range(len(self.availability_zones)):
             public_subnet = ec2.PublicSubnet(self, f"{scope_id} {self.availability_zones[index]}",
-                cidr_block='.'.join((self.oct_1, self.oct_2, str(subnet_oct3 + index), "0")) + "/24",
+                cidr_block='.'.join((self.oct_1, self.oct_2, str(subnet_oct3 + index), "0")) + "/" + str(mask),
                 vpc_id=self.vpc.vpc_id,
                 availability_zone=self.availability_zones[index]
             )
@@ -110,11 +112,11 @@ class VPCStack(Stack):
 
         return isubnets
 
-    def add_private_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> list:
+    def add_private_subnets(self, scope_id: str, subnet_oct3: int, mask: int=24) -> list:
         isubnets = []
         for index in range(len(self.availability_zones)):
             private_subnet = ec2.PrivateSubnet(self, f"{scope_id} {self.availability_zones[index]}",
-                cidr_block='.'.join((self.oct_1, self.oct_2, str(subnet_oct3 + index), "0")) + "/24",
+                cidr_block='.'.join((self.oct_1, self.oct_2, str(subnet_oct3 + index), "0")) + "/" + str(mask),
                 vpc_id=self.vpc.vpc_id,
                 availability_zone=self.availability_zones[index]
             )
@@ -128,11 +130,11 @@ class VPCStack(Stack):
 
         return isubnets
 
-    def add_isolated_subnets(self, subnet_oct3: int, mask: int, scope_id: str) -> list:
+    def add_isolated_subnets(self, scope_id: str, subnet_oct3: int, mask: int=24) -> list:
         isubnets = []
         for index in range(len(self.availability_zones)):
             subnet = ec2.Subnet(self, f"{scope_id} {self.availability_zones[index]}",
-                cidr_block='.'.join((self.oct_1, self.oct_2, str(subnet_oct3 + index), "0")) + "/24",
+                cidr_block='.'.join((self.oct_1, self.oct_2, str(subnet_oct3 + index), "0")) + "/" + str(mask),
                 vpc_id=self.vpc.vpc_id,
                 availability_zone=self.availability_zones[index]
             )
@@ -140,7 +142,7 @@ class VPCStack(Stack):
         
         return isubnets
 
-    def apply_endpoint(self, rt_ids: list, scope_id: str) -> None:
+    def apply_endpoint(self, scope_id: str, rt_ids: list) -> None:
         ec2.CfnVPCEndpoint(self, f"{scope_id} VPCEndpoint",
             service_name="com.amazonaws." + self.region + ".s3",
             vpc_id=self.vpc.vpc_id,
@@ -174,7 +176,7 @@ class VPCStack(Stack):
         for i in range(len(self.availability_zones)):
             isubnets[i].add_default_nat_route(self.nat_gateway_ids[i] if self.vpc_ha else self.nat_gateway_ids[0])
 
-    def create_tgw(self, bgp_asn: int=65000, scope_id: str=None) -> None:
+    def create_tgw(self, scope_id: str=None, bgp_asn: int=65000) -> None:
         # unique bgp_asn number is needed if you have multiple transit gateway in your organization.
         # and the value should not conflict with the other ASN value (if there is any) that you use
         # in your organization
@@ -196,7 +198,7 @@ class VPCStack(Stack):
             resource_arns=[f"arn:aws:ec2:{self.region}:{self.account}:transit-gateway/{self.tgw.ref}"]
         )
 
-    def create_tgw_attach(self, vpc_id: str, tgw_id: str, subnet_oct3: int, mask: int, scope_id: str=None) -> list:
+    def create_tgw_attach(self, scope_id: str, vpc_id: str, tgw_id: str, subnet_oct3: int, mask: int) -> list:
         """
         Create Transit Gateway Attachment
 
@@ -248,7 +250,7 @@ class VPCStack(Stack):
 
         )
 
-    def add_tgw_route(self, route_tables: list, tgw_id: str, tgw_attach: str, dest_cidr: str, scope_id: str=None) -> None:
+    def add_tgw_route(self, scope_id: str, route_tables: list, tgw_id: str, tgw_attach: str, dest_cidr: str) -> None:
         for i in range(len(route_tables)):
             res_tgw_route=ec2.CfnRoute(self, f"{scope_id}{i}",
                             route_table_id=route_tables[i],
@@ -266,12 +268,16 @@ class VPCStack(Stack):
         self.create_tgw(scope_id="TGW")
         res_tgw_isubnets = self.create_tgw_attach(vpc_id=self.vpc.vpc_id, tgw_id=self.tgw.ref, subnet_oct3=240, mask=24, scope_id="TGWAttach")
         self.add_tgw_route(
+            scope_id='tgwpriroute',
             route_tables=[isubnet.route_table.route_table_id for isubnet in res_pri_isubnets], 
-            tgw_id=self.tgw.ref, tgw_attach=self.tgw_attach, dest_cidr=self.node.try_get_context('DC_DEST_CIDR'), scope_id='tgwpriroute')
-        self.add_tgw_route(route_tables=[isubnet.route_table.route_table_id for isubnet in res_iso_isubnets], 
-            tgw_id=self.tgw.ref, tgw_attach=self.tgw_attach, dest_cidr=self.node.try_get_context('DC_DEST_CIDR'), scope_id='tgwisoroute')
+            tgw_id=self.tgw.ref, tgw_attach=self.tgw_attach, dest_cidr=self.node.try_get_context('DC_DEST_CIDR'))
         self.add_tgw_route(
+            scope_id='tgwisoroute',
+            route_tables=[isubnet.route_table.route_table_id for isubnet in res_iso_isubnets], 
+            tgw_id=self.tgw.ref, tgw_attach=self.tgw_attach, dest_cidr=self.node.try_get_context('DC_DEST_CIDR'))
+        self.add_tgw_route(
+            scope_id='tgwroute',
             route_tables=[isubnet.route_table.route_table_id for isubnet in res_tgw_isubnets], 
-            tgw_id=self.tgw.ref, tgw_attach=self.tgw_attach, dest_cidr=self.node.try_get_context('DC_DEST_CIDR'), scope_id='tgwroute')
+            tgw_id=self.tgw.ref, tgw_attach=self.tgw_attach, dest_cidr=self.node.try_get_context('DC_DEST_CIDR'))
         
     # Tags.of(self.vpc).add("DREAMCHASER", "DREAMCHASERVPC")
