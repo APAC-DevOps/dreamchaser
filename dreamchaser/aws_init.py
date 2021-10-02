@@ -2,7 +2,8 @@ import boto3
 from botocore.client import ClientError
 
 class AWSOrg():
-    def __init__(self, region_name: str, policy_type: str='SERVICE_CONTROL_POLICY', org_unit: str='dreamchaser', **kwargs) -> None:
+    def __init__(self, region_name: str, policy_type: str='SERVICE_CONTROL_POLICY',
+                org_unit: str='dreamchaser', **kwargs) -> None:
         self.client = boto3.client('organizations', region_name = 'ap-southeast-2')
         self.policy_type = policy_type
         self.org_unit = org_unit

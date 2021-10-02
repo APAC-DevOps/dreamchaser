@@ -24,17 +24,30 @@ main_stack = MainStack(app_vpc, "DREAMCHASER-VPC-STACK-MAIN",
 
 vpc_stack = VPCStack(main_stack, "DREAMCHASER-VPC-STACK-VPC")
 
-# assume you don't have AWS Organization set up, and there is one AWS account only,
+# assume you don not have AWS Organization set up, and there is one AWS account only,
 if app_vpc.node.try_get_context("EASY_VPC"):
         vpc_stack.easy_vpc()
 else:
-        # the purpose of the lines of code below is to show how DreamChaser construct can be used flexibibly
-        # you can make changes per your project requirements
+        # the purpose of the lines of code below is to show how DreamChaser
+        # construct can be used flexibibly you can make changes per your project
+        # requirements
         ou_id = app_vpc.node.try_get_context("OU_ID") or ssm_client.get_para(name='DC_ONE_OU_ID')
-        vpc_stack.add_vpc(vpc_cidr=app_vpc.node.try_get_context('DC_VPC_CIDR'), enable_internet=True, enable_nat=True, vpc_ha=app_vpc.node.try_get_context('DC_VPC_HA'), vpc_endpoint=True)
-        res_pub_isubnets = vpc_stack.add_public_subnets(scope_id='DCPublicSubnets', subnet_oct3=16, mask=24)
-        res_pri_isubnets = vpc_stack.add_private_subnets(scope_id='DCPrivateSubnets', subnet_oct3=128, mask=24)
-        res_iso_isubnets = vpc_stack.add_isolated_subnets(scope_id='DCIsolatedSubnets', subnet_oct3=192, mask=24)
+        vpc_stack.add_vpc(
+                vpc_cidr=app_vpc.node.try_get_context('DC_VPC_CIDR'),
+                enable_internet=True,
+                enable_nat=True,
+                vpc_ha=app_vpc.node.try_get_context('DC_VPC_HA'),
+                vpc_endpoint=True
+        )
+        res_pub_isubnets = vpc_stack.add_public_subnets(
+                scope_id='DCPublicSubnets', subnet_oct3=16, mask=24
+        )
+        res_pri_isubnets = vpc_stack.add_private_subnets(
+                scope_id='DCPrivateSubnets', subnet_oct3=128, mask=24
+        )
+        res_iso_isubnets = vpc_stack.add_isolated_subnets(
+                scope_id='DCIsolatedSubnets', subnet_oct3=192, mask=24
+        )
         vpc_stack.create_tgw(scope_id="TGW")
         time.sleep(5)
         vpc_stack.share_tgw(ou_id=ou_id)
@@ -49,7 +62,8 @@ else:
                 tgw_id=app_vpc.node.try_get_context("TGW_ID") or vpc_stack.tgw.ref,
                 asso_tgw_attach_id=app_vpc.node.try_get_context("ASSO_TGW_ATTACH_ID") or vpc_stack.tgw_attach.ref,
                 dest_tgw_attach_id=app_vpc.node.try_get_context("DEST_TGW_ATTACH_ID") or vpc_stack.tgw_attach.ref,
-                dest_cidr=app_vpc.node.try_get_context("DC_DEST_CIDR")      # specify your own destination CIDR here.
+                # specify your own destination CIDR.
+                dest_cidr=app_vpc.node.try_get_context("DC_DEST_CIDR")
         )
         vpc_stack.add_tgw_route(
                 scope_id='pritgwroute',
